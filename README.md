@@ -1,9 +1,9 @@
 # GSoC 2026 Proposal - GPU-Accelerated BEV Camera Application on Bubbaloop
 
-**Applicant:** Zeel Darji ([@0xZeeast](https://github.com/0xZeeast))  
+**Applicant:** Zeel Darji ([@zeel991](https://github.com/zeel991))  
 **Organization:** [kornia](https://github.com/kornia/kornia-rs)  
 **Mentor:** Edgar Riba  
-**Pre-application implementation:** [`feat/kornia-gpu-cuda`](https://github.com/0xZeeast/kornia-rs/tree/feat/kornia-gpu-cuda)
+**Pre-application implementation:** [`feat/kornia-gpu-cuda`](https://github.com/zeel991/kornia-rs/tree/feat/kornia-gpu-cuda)
 
 ---
 
@@ -53,7 +53,7 @@ The BEV node will be implemented as a Bubbaloop node following the existing node
 
 A working `kornia-gpu` crate has been built and integrated into the kornia-rs workspace. This is the GPU backend that will be contributed to kornia-rs as the primary GSoC deliverable.
 
-Full source: [`feat/kornia-gpu-cuda`](https://github.com/0xZeeast/kornia-rs/tree/feat/kornia-gpu-cuda)
+Full source: [`feat/kornia-gpu-cuda`](https://github.com/zeel991/kornia-rs/tree/feat/kornia-gpu-cuda)
 
 ### What is already built
 
@@ -258,8 +258,6 @@ I am a final-year B.Tech CSE student at IIIT Nagpur, graduating mid-2026. I have
 
 **Relevant experience:**
 - **Rust:** CubeCL kernels, cudarc, Substrate pallets, kornia-rs contributions
-- **GPU:** CUDA C kernel authoring, PTX compilation, wgpu/Vulkan via CubeCL, bilinear interpolation implementation
-- **Computer vision:** OpenCV (Python/C++), kornia-rs, image processing pipelines
 - **Systems:** Memory allocator design, zero-copy buffer pooling, async-safe GPU dispatch
 
 **Open source track record:**
@@ -269,8 +267,8 @@ I am a final-year B.Tech CSE student at IIIT Nagpur, graduating mid-2026. I have
 
 **Availability:** Full-time June–September 2026. No internship or employment commitments during this period. Cloud GPU access confirmed for edge validation. IST (UTC+5:30). Weekly progress updates on Discord and GitHub.
 
-**GitHub:** [@0xZeeast](https://github.com/0xZeeast)  
-**Discord:** @0xZeeast
+**GitHub:** [@zeel991](https://github.com/zeel991)  
+**Discord:** zeel#2929
 
 ---
 
