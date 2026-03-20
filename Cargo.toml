@@ -1,0 +1,49 @@
+[package]
+name = "kornia-gpu"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "GPU-accelerated image processing for kornia-rs — wgpu + CUDA backends with hardware-aware auto-dispatch"
+repository = "https://github.com/0xZeeast/kornia-gpu"
+license = "MIT OR Apache-2.0"
+build = "build.rs"
+
+[dependencies]
+kornia-tensor = "0.1.11"
+kornia-image  = "0.1.11"
+cubecl        = { version = "0.9", features = ["wgpu"] }
+bytemuck      = "1"
+thiserror     = "2"
+
+# CUDA backend — optional, requires nvidia-cuda-toolkit at build time
+cudarc = { version = "0.19", features = ["cuda-12000", "dynamic-loading"], optional = true }
+
+[features]
+default = []
+cuda = ["dep:cudarc"]
+
+[dev-dependencies]
+criterion    = "0.8"
+kornia-imgproc = "0.1.11"
+kornia-io      = "0.1.11"
+
+[[bench]]
+name = "bench_gpu"
+harness = false
+
+[[example]]
+name = "bev_compare"
+path = "examples/bev_compare.rs"
+
+[[example]]
+name = "bev_node"
+path = "examples/bev_node.rs"
+
+[[example]]
+name = "bev_cuda"
+path = "examples/bev_cuda.rs"
+required-features = ["cuda"]
+
+[[example]]
+name = "bev_auto"
+path = "examples/bev_auto.rs"
