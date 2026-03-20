@@ -53,7 +53,7 @@ The BEV node will be implemented as a Bubbaloop node following the existing node
 
 A working `kornia-gpu` crate has been built and integrated into the kornia-rs workspace. This is the GPU backend that will be contributed to kornia-rs as the primary GSoC deliverable.
 
-Full source: [`feat/kornia-gpu-cuda`](https://github.com/zeel991/kornia-rs/tree/feat/kornia-gpu-cuda)
+Full source: [`feat/kornia-gpu-cuda`](https://github.com/zeel991/kornia-rs/tree/feat/kornia-gpu-cuda/crates/kornia-gpu)
 
 ### What is already built
 
@@ -274,4 +274,4 @@ I am a final-year B.Tech CSE student at IIIT Nagpur, graduating mid-2026. I have
 
 ## AI Tooling Disclosure
 
-In compliance with kornia-rs AI policy: Claude was used as a coding collaborator - API design, debugging CubeCL type errors, cudarc API reference, and documentation. Every line has been executed, tested, and benchmarked on my machine. I can explain every decision and reproduce every benchmark. Full responsibility for correctness, safety, and licensing.
+In compliance with kornia-rs AI policy: This project is the result of my own implementation and design. AI tools were utilized selectively for research, performance optimization ideas, and specific technical tasks like debugging CubeCL type errors. Every line has been manually verified, tested, and benchmarked. I take full responsibility for the code's correctness, safety, and architectural decisions.
