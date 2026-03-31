@@ -3,29 +3,40 @@
 pub mod allocator;
 pub mod backend;
 pub mod error;
+pub mod gpu_backend;
 pub mod image;
 pub mod kernels;
 pub mod pipeline;
+pub mod pipeline_async;
 pub mod pool;
 
 pub mod cuda;
 
+// Core types
 pub use allocator::GpuAllocator;
-pub use backend::{AnyGpuImage, Backend};
 pub use error::GpuError;
 pub use image::{GpuImage, ImageExt};
+
+// Ops (free functions, matching kornia-imgproc style)
+pub use kernels::{cast_and_scale, gray_from_rgb, resize_bilinear, warp_perspective};
+pub use kernels::{cast_and_scale_into, gray_from_rgb_into, warp_perspective_into};
+
+// Pipeline
+pub use pipeline::GpuPipeline;
+pub use pipeline_async::{GpuStreamingPipeline, StreamingPipeline};
+
+// High-level backend (bubbaloop-facing, not upstream kornia API)
+pub use gpu_backend::{auto_select_backend, GpuBackend, WgpuGpuBackend};
 pub use pool::GpuImagePool;
+
+pub use backend::{AnyGpuImage, Backend};
 
 #[cfg(test)]
 mod tests {
     use kornia_image::{Image, ImageSize};
     use kornia_tensor::CpuAllocator;
 
-    use crate::{
-        kernels,
-        pipeline::GpuPipeline,
-        GpuAllocator, GpuImage, ImageExt,
-    };
+    use crate::{kernels, pipeline::GpuPipeline, GpuAllocator, GpuImage, ImageExt};
 
     fn gpu() -> GpuAllocator {
         GpuAllocator::new()
@@ -33,7 +44,15 @@ mod tests {
 
     fn rgb_image(h: usize, w: usize) -> Image<f32, 3, CpuAllocator> {
         let data: Vec<f32> = (0..h * w * 3).map(|i| (i % 256) as f32).collect();
-        Image::new(ImageSize { height: h, width: w }, data, CpuAllocator).unwrap()
+        Image::new(
+            ImageSize {
+                height: h,
+                width: w,
+            },
+            data,
+            CpuAllocator,
+        )
+        .unwrap()
     }
 
     // Transfer round-trip
@@ -71,10 +90,18 @@ mod tests {
     fn test_cast_and_scale_zero() {
         let gpu = gpu();
         let src = Image::<f32, 3, _>::from_size_val(
-            ImageSize { height: 4, width: 4 }, 0.0, CpuAllocator,
-        ).unwrap();
+            ImageSize {
+                height: 4,
+                width: 4,
+            },
+            0.0,
+            CpuAllocator,
+        )
+        .unwrap();
         let result = kernels::cast_and_scale(&src.to_gpu(&gpu).unwrap(), 1.0 / 255.0)
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
         assert!(result.as_slice().iter().all(|&v| v == 0.0));
     }
 
@@ -84,10 +111,18 @@ mod tests {
     fn test_gray_from_rgb_black() {
         let gpu = gpu();
         let src = Image::<f32, 3, _>::from_size_val(
-            ImageSize { height: 4, width: 4 }, 0.0, CpuAllocator,
-        ).unwrap();
+            ImageSize {
+                height: 4,
+                width: 4,
+            },
+            0.0,
+            CpuAllocator,
+        )
+        .unwrap();
         let result = kernels::gray_from_rgb(&src.to_gpu(&gpu).unwrap())
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
         assert!(result.as_slice().iter().all(|&v| v == 0.0));
     }
 
@@ -95,10 +130,18 @@ mod tests {
     fn test_gray_from_rgb_white() {
         let gpu = gpu();
         let src = Image::<f32, 3, _>::from_size_val(
-            ImageSize { height: 4, width: 4 }, 1.0, CpuAllocator,
-        ).unwrap();
+            ImageSize {
+                height: 4,
+                width: 4,
+            },
+            1.0,
+            CpuAllocator,
+        )
+        .unwrap();
         let result = kernels::gray_from_rgb(&src.to_gpu(&gpu).unwrap())
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
         // 0.299 + 0.587 + 0.114 = 1.0
         for &v in result.as_slice() {
             assert!((v - 1.0).abs() < 1e-5, "expected 1.0, got {v}");
@@ -110,12 +153,18 @@ mod tests {
         // Single pixel: R=1.0, G=0.0, B=0.0 → gray = 0.299
         let gpu = gpu();
         let src = Image::<f32, 3, _>::new(
-            ImageSize { height: 1, width: 1 },
+            ImageSize {
+                height: 1,
+                width: 1,
+            },
             vec![1.0, 0.0, 0.0],
             CpuAllocator,
-        ).unwrap();
+        )
+        .unwrap();
         let result = kernels::gray_from_rgb(&src.to_gpu(&gpu).unwrap())
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
         assert!((result.as_slice()[0] - 0.299).abs() < 1e-5);
     }
 
@@ -127,7 +176,9 @@ mod tests {
         let src = rgb_image(8, 8);
         let identity = [1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
         let result = kernels::warp_perspective(&src.to_gpu(&gpu).unwrap(), (8, 8), &identity)
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
         assert_eq!(result.size(), src.size());
         assert_eq!(result.num_channels(), 3);
     }
@@ -139,7 +190,9 @@ mod tests {
         let src = rgb_image(8, 8);
         let identity = [1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
         let result = kernels::warp_perspective(&src.to_gpu(&gpu).unwrap(), (8, 8), &identity)
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
 
         // Interior 4x4 pixels should match src exactly (no border effects)
         for row in 1..6usize {
@@ -147,8 +200,10 @@ mod tests {
                 for ch in 0..3usize {
                     let expected = src.get([row, col, ch]).unwrap();
                     let actual = result.get([row, col, ch]).unwrap();
-                    assert!((expected - actual).abs() < 1e-4,
-                        "pixel ({row},{col},{ch}): expected {expected}, got {actual}");
+                    assert!(
+                        (expected - actual).abs() < 1e-4,
+                        "pixel ({row},{col},{ch}): expected {expected}, got {actual}"
+                    );
                 }
             }
         }
@@ -160,7 +215,9 @@ mod tests {
         let src = rgb_image(8, 8);
         let m = [1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
         let result = kernels::warp_perspective(&src.to_gpu(&gpu).unwrap(), (4, 6), &m)
-            .unwrap().to_cpu().unwrap();
+            .unwrap()
+            .to_cpu()
+            .unwrap();
         assert_eq!(result.height(), 4);
         assert_eq!(result.width(), 6);
     }
@@ -183,10 +240,14 @@ mod tests {
         let m = [1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
 
         let result = GpuPipeline::new(&gpu)
-            .upload(&src).unwrap()
-            .cast_and_scale(1.0 / 255.0).unwrap()
-            .warp_perspective((8, 8), &m).unwrap()
-            .download().unwrap();
+            .upload(&src)
+            .unwrap()
+            .cast_and_scale(1.0 / 255.0)
+            .unwrap()
+            .warp_perspective((8, 8), &m)
+            .unwrap()
+            .download()
+            .unwrap();
 
         assert_eq!(result.size(), src.size());
         assert_eq!(result.num_channels(), 3);
@@ -199,11 +260,16 @@ mod tests {
         let m = [1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
 
         let result = GpuPipeline::new(&gpu)
-            .upload(&src).unwrap()
-            .cast_and_scale(1.0 / 255.0).unwrap()
-            .warp_perspective((8, 8), &m).unwrap()
-            .gray_from_rgb().unwrap()
-            .download().unwrap();
+            .upload(&src)
+            .unwrap()
+            .cast_and_scale(1.0 / 255.0)
+            .unwrap()
+            .warp_perspective((8, 8), &m)
+            .unwrap()
+            .gray_from_rgb()
+            .unwrap()
+            .download()
+            .unwrap();
 
         assert_eq!(result.height(), 8);
         assert_eq!(result.width(), 8);
@@ -219,18 +285,19 @@ mod tests {
         let src = rgb_image(1080, 1920);
         let identity = [1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
 
-        let result = kernels::warp_perspective(
-            &src.to_gpu(&gpu).unwrap(), (1080, 1920), &identity,
-        ).unwrap().to_cpu().unwrap();
+        let result = kernels::warp_perspective(&src.to_gpu(&gpu).unwrap(), (1080, 1920), &identity)
+            .unwrap()
+            .to_cpu()
+            .unwrap();
 
         assert_eq!(result.size(), src.size());
 
-        // Check centre pixel — far from borders, bilinear on integer coords is exact
+        // Check centre pixel - far from borders, bilinear on integer coords is exact
         let row = 540usize;
         let col = 960usize;
         for ch in 0..3usize {
             let expected = src.get([row, col, ch]).unwrap();
-            let actual   = result.get([row, col, ch]).unwrap();
+            let actual = result.get([row, col, ch]).unwrap();
             assert!(
                 (expected - actual).abs() < 1e-4,
                 "1080p pixel ({row},{col},{ch}): expected {expected}, got {actual}"
@@ -267,7 +334,7 @@ mod tests {
         let src = rgb_image(8, 8);
         let gpu_src = src.to_gpu(&gpu).unwrap();
 
-        // Pre-allocate output buffer — zero per-call allocation
+        // Pre-allocate output buffer - zero per-call allocation
         let dst = GpuImage::<f32, 3>::empty(8, 8, &gpu);
         kernels::cast_and_scale_into(&gpu_src, &dst, 1.0 / 255.0).unwrap();
         let result = dst.to_cpu().unwrap();
@@ -310,25 +377,30 @@ mod tests {
         assert_eq!(pool_warp.available_count(), 1);
     }
 
-    // CUDA backend tests - only run if CUDA is available on this machine
+    // CUDA backend tests - only compile when cuda feature is enabled
 
+    #[cfg(feature = "cuda")]
     fn cuda_available() -> bool {
         crate::cuda::allocator::CudaAllocator::is_available()
     }
 
+    #[cfg(feature = "cuda")]
     fn cuda_alloc() -> crate::cuda::allocator::CudaAllocator {
         crate::cuda::allocator::CudaAllocator::new().expect("CUDA not available")
     }
 
     #[test]
+    #[cfg(feature = "cuda")]
     fn test_cuda_allocator_available() {
-        // Just checks that is_available() doesn't panic on any machine
         let _ = cuda_available();
     }
 
     #[test]
+    #[cfg(feature = "cuda")]
     fn test_cuda_transfer_roundtrip() {
-        if !cuda_available() { return; }
+        if !cuda_available() {
+            return;
+        }
         use crate::cuda::image::CudaImageExt;
 
         let alloc = cuda_alloc();
@@ -343,8 +415,11 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "cuda")]
     fn test_cuda_cast_and_scale() {
-        if !cuda_available() { return; }
+        if !cuda_available() {
+            return;
+        }
         use crate::cuda::image::CudaImageExt;
 
         let alloc = cuda_alloc();
@@ -362,8 +437,11 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "cuda")]
     fn test_cuda_warp_perspective_identity() {
-        if !cuda_available() { return; }
+        if !cuda_available() {
+            return;
+        }
         use crate::cuda::image::CudaImageExt;
 
         let alloc = cuda_alloc();
@@ -379,8 +457,11 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "cuda")]
     fn test_cuda_gray_from_rgb() {
-        if !cuda_available() { return; }
+        if !cuda_available() {
+            return;
+        }
         use crate::cuda::image::CudaImageExt;
         use kornia_image::{Image, ImageSize};
         use kornia_tensor::CpuAllocator;
@@ -388,10 +469,14 @@ mod tests {
         let alloc = cuda_alloc();
         // White pixel: R=1, G=1, B=1 -> gray = 1.0
         let white = Image::<f32, 3, CpuAllocator>::new(
-            ImageSize { height: 1, width: 1 },
+            ImageSize {
+                height: 1,
+                width: 1,
+            },
             vec![1.0f32, 1.0, 1.0],
             CpuAllocator,
-        ).unwrap();
+        )
+        .unwrap();
         let cuda_src = white.to_cuda(&alloc).unwrap();
         let result = crate::cuda::kernels::gray_from_rgb(&cuda_src)
             .unwrap()
@@ -401,8 +486,11 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "cuda")]
     fn test_cuda_warp_matches_wgpu() {
-        if !cuda_available() { return; }
+        if !cuda_available() {
+            return;
+        }
         use crate::cuda::image::CudaImageExt;
 
         let gpu = gpu();
@@ -415,12 +503,18 @@ mod tests {
             .to_cpu()
             .unwrap();
 
-        let cuda_result = crate::cuda::kernels::warp_perspective(
-            &src.to_cuda(&alloc).unwrap(), (32, 32), &m
-        ).unwrap().to_cpu().unwrap();
+        let cuda_result =
+            crate::cuda::kernels::warp_perspective(&src.to_cuda(&alloc).unwrap(), (32, 32), &m)
+                .unwrap()
+                .to_cpu()
+                .unwrap();
 
         // Both backends must produce identical results
-        for (a, b) in wgpu_result.as_slice().iter().zip(cuda_result.as_slice().iter()) {
+        for (a, b) in wgpu_result
+            .as_slice()
+            .iter()
+            .zip(cuda_result.as_slice().iter())
+        {
             assert!((a - b).abs() < 1e-4f32, "wgpu={} cuda={}", a, b);
         }
     }
@@ -432,10 +526,13 @@ mod tests {
         let src = rgb_image(8, 8);
         let cpu_f32 = src.cast_and_scale::<f32>(1.0 / 255.0).unwrap();
         let gpu_img = backend.upload(&cpu_f32).unwrap();
-        let warped = backend.warp_perspective(
-            &gpu_img, (8, 8), &[1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        ).unwrap();
+        let warped = backend
+            .warp_perspective(
+                &gpu_img,
+                (8, 8),
+                &[1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+            )
+            .unwrap();
         let _result = backend.download(&warped).unwrap();
     }
-
 }

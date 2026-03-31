@@ -1,0 +1,25 @@
+[package]
+name = "bubbaloop-node"
+version = "0.1.0"
+edition = "2021"
+description = "Bubbaloop-style GPU node: webcam → kornia-gpu → Zenoh"
+
+[dependencies]
+kornia-gpu = { path = ".." }
+turbojpeg = "0.5"
+# Webcam capture (V4L2 on Linux, AVFoundation on macOS, MediaFoundation on Windows)
+nokhwa = { version = "0.10", features = ["input-native"] }
+
+# Zenoh pub/sub
+zenoh = "1.0"
+
+# JPEG encoding for frame serialisation
+image = "0.25"
+
+# Async runtime (zenoh 1.0 is async)
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+
+[features]
+default = []
+cuda = ["kornia-gpu/cuda"]

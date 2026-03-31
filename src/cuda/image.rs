@@ -18,19 +18,42 @@ pub struct CudaImage<const C: usize> {
 impl<const C: usize> CudaImage<C> {
     pub fn empty(height: usize, width: usize, alloc: &CudaAllocator) -> Result<Self, GpuError> {
         let n = height * width * C;
-        let slice = alloc.stream.alloc_zeros::<f32>(n)
+        let slice = alloc
+            .stream
+            .alloc_zeros::<f32>(n)
             .map_err(|e| GpuError::CudaError(e.to_string()))?;
-        Ok(Self { slice, height, width, alloc: alloc.clone() })
+        Ok(Self {
+            slice,
+            height,
+            width,
+            alloc: alloc.clone(),
+        })
     }
 
-    pub fn height(&self) -> usize { self.height }
-    pub fn width(&self) -> usize { self.width }
-    pub fn numel(&self) -> usize { self.height * self.width * C }
-    pub fn size(&self) -> ImageSize { ImageSize { width: self.width, height: self.height } }
-    pub fn alloc(&self) -> &CudaAllocator { &self.alloc }
+    pub fn height(&self) -> usize {
+        self.height
+    }
+    pub fn width(&self) -> usize {
+        self.width
+    }
+    pub fn numel(&self) -> usize {
+        self.height * self.width * C
+    }
+    pub fn size(&self) -> ImageSize {
+        ImageSize {
+            width: self.width,
+            height: self.height,
+        }
+    }
+    pub fn alloc(&self) -> &CudaAllocator {
+        &self.alloc
+    }
 
     pub fn to_cpu(&self) -> Result<Image<f32, C, CpuAllocator>, GpuError> {
-        let data = self.alloc.stream.clone_dtoh(&self.slice)
+        let data = self
+            .alloc
+            .stream
+            .clone_dtoh(&self.slice)
             .map_err(|e| GpuError::CudaError(e.to_string()))?;
         Image::new(self.size(), data, CpuAllocator).map_err(GpuError::ImageError)
     }
@@ -42,8 +65,15 @@ pub trait CudaImageExt<const C: usize> {
 
 impl<const C: usize> CudaImageExt<C> for Image<f32, C, CpuAllocator> {
     fn to_cuda(&self, alloc: &CudaAllocator) -> Result<CudaImage<C>, GpuError> {
-        let slice = alloc.stream.clone_htod(self.as_slice())
+        let slice = alloc
+            .stream
+            .clone_htod(self.as_slice())
             .map_err(|e| GpuError::CudaError(e.to_string()))?;
-        Ok(CudaImage { slice, height: self.height(), width: self.width(), alloc: alloc.clone() })
+        Ok(CudaImage {
+            slice,
+            height: self.height(),
+            width: self.width(),
+            alloc: alloc.clone(),
+        })
     }
 }

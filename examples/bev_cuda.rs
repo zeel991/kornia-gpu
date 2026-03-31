@@ -6,16 +6,12 @@
 //! Usage:
 //!   cargo run --release --example bev_cuda --features cuda -- frame.jpg
 
-use kornia_gpu::cuda::{CudaAllocator, CudaImageExt, kernels as cuda_kernels};
-use kornia_gpu::{GpuAllocator, ImageExt, kernels as wgpu_kernels};
+use kornia_gpu::cuda::{kernels as cuda_kernels, CudaAllocator, CudaImageExt};
+use kornia_gpu::{kernels as wgpu_kernels, GpuAllocator, ImageExt};
 use kornia_image::Image;
 use kornia_tensor::CpuAllocator;
 
-const BEV_HOMOGRAPHY: [f32; 9] = [
-     1.2,    0.05, -120.0,
-    -0.03,   1.15,  -90.0,
-     0.0001, 0.0002,  1.0,
-];
+const BEV_HOMOGRAPHY: [f32; 9] = [1.2, 0.05, -120.0, -0.03, 1.15, -90.0, 0.0001, 0.0002, 1.0];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -71,19 +67,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("CUDA speedup:   {:.2}x", wgpu_ms / cuda_ms);
 
     // Accuracy check: compare CUDA output vs wgpu output
-    let wgpu_result = wgpu_kernels::warp_perspective(&gpu_src, (h, w), &BEV_HOMOGRAPHY)?
-        .to_cpu()?;
-    let cuda_result = cuda_kernels::warp_perspective(&cuda_src, (h, w), &BEV_HOMOGRAPHY)?
-        .to_cpu()?;
+    let wgpu_result =
+        wgpu_kernels::warp_perspective(&gpu_src, (h, w), &BEV_HOMOGRAPHY)?.to_cpu()?;
+    let cuda_result =
+        cuda_kernels::warp_perspective(&cuda_src, (h, w), &BEV_HOMOGRAPHY)?.to_cpu()?;
 
-    let diffs: Vec<f32> = wgpu_result.as_slice().iter()
+    let diffs: Vec<f32> = wgpu_result
+        .as_slice()
+        .iter()
         .zip(cuda_result.as_slice().iter())
         .map(|(a, b)| (a - b).abs())
         .collect();
 
     let mean_diff = diffs.iter().sum::<f32>() / diffs.len() as f32;
     let max_diff = diffs.iter().cloned().fold(0.0f32, f32::max);
-    let match_1 = diffs.iter().filter(|&&d| d < 1.0/255.0).count() as f32 / diffs.len() as f32;
+    let match_1 = diffs.iter().filter(|&&d| d < 1.0 / 255.0).count() as f32 / diffs.len() as f32;
 
     println!("\n=== CUDA vs wgpu accuracy ===");
     println!("Mean abs diff:  {:.6}", mean_diff);
@@ -94,7 +92,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let raw: &[u8] = bytemuck::cast_slice(cuda_result.as_slice());
     std::fs::write("output_cuda.bin", raw)?;
     println!("\nCUDA output saved: output_cuda.bin");
-    println!("Compare: python3 crates/kornia-gpu/tools/opencv_compare.py {} output_cuda.bin {} {}", input_path, w, h);
+    println!(
+        "Compare: python3 crates/kornia-gpu/tools/opencv_compare.py {} output_cuda.bin {} {}",
+        input_path, w, h
+    );
 
     Ok(())
 }

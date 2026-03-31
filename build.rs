@@ -8,6 +8,7 @@
 //! Install with: sudo apt install nvidia-cuda-toolkit
 
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(cuda_kernels_compiled)");
     if try_compile_cuda_kernels() {
         println!("cargo:rustc-cfg=cuda_kernels_compiled");
     }
@@ -25,14 +26,15 @@ fn try_compile_cuda_kernels() -> bool {
         "/usr/lib/nvidia-cuda-toolkit/bin/nvcc",
     ];
 
-    let nvcc = nvcc_candidates.iter()
+    let nvcc = nvcc_candidates
+        .iter()
         .find(|p| std::path::Path::new(p).exists())
         .copied();
 
     let nvcc = match nvcc {
         Some(p) => p,
         None => {
-            println!("cargo:warning=nvcc not found — CUDA kernels not compiled. Install nvidia-cuda-toolkit for CUDA support.");
+            println!("cargo:warning=nvcc not found - CUDA kernels not compiled. Install nvidia-cuda-toolkit for CUDA support.");
             return false;
         }
     };
@@ -42,7 +44,7 @@ fn try_compile_cuda_kernels() -> bool {
 
     // Verify kernels directory exists
     if !kernels_dir.exists() {
-        println!("cargo:warning=kernels/cuda/ not found — skipping CUDA kernel compilation.");
+        println!("cargo:warning=kernels/cuda/ not found - skipping CUDA kernel compilation.");
         return false;
     }
 
@@ -64,7 +66,10 @@ fn try_compile_cuda_kernels() -> bool {
         let ptx = out_dir.join(format!("{}.ptx", kernel));
 
         if !src.exists() {
-            println!("cargo:warning=CUDA kernel source not found: {}", src.display());
+            println!(
+                "cargo:warning=CUDA kernel source not found: {}",
+                src.display()
+            );
             all_ok = false;
             continue;
         }
@@ -74,10 +79,14 @@ fn try_compile_cuda_kernels() -> bool {
             .args([
                 "-ptx",
                 "-O3",
-                "--generate-code", &arch,
-                "-I", cuda_include,
-                "-I", "/usr/include",
-                "-o", ptx.to_str().unwrap(),
+                "--generate-code",
+                &arch,
+                "-I",
+                cuda_include,
+                "-I",
+                "/usr/include",
+                "-o",
+                ptx.to_str().unwrap(),
                 src.to_str().unwrap(),
             ])
             .status();

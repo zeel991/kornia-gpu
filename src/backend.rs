@@ -1,10 +1,10 @@
 //! Hardware-aware GPU backend dispatch.
 //!
 //! Backend::auto() selects the best available backend:
-//!   - --features cuda + NVIDIA GPU present → CUDA (13× faster kernel)
-//!   - Everything else → wgpu/Vulkan (cross-platform, any GPU)
+//! --features cuda + NVIDIA GPU present → CUDA (13× faster kernel)
+//! Everything else → wgpu/Vulkan (cross-platform, any GPU)
 //!
-//! # Usage
+//! Usage:
 //!
 //! // Automatically picks the best backend - no flags needed at call site
 //! let backend = Backend::auto()?;
@@ -13,18 +13,18 @@
 //! let gpu_img = backend.upload(&cpu_img)?;
 //! let warped  = backend.warp_perspective(&gpu_img, (h, w), &H)?;
 //! let result  = backend.download(&warped)?;
-//! 
-//! # Feature flags
+//!
+//! Feature flags:
 //!
 //! Default build (cross-platform, no NVIDIA requirement):
 //! toml
 //! kornia-gpu = { path = "..." }
-//! 
+//!
 //!
 //! With CUDA support (requires nvcc + NVIDIA GPU at runtime):
 //! toml
 //! kornia-gpu = { path = "...", features = ["cuda"] }
-//! 
+//!
 
 use kornia_image::{Image, ImageSize};
 use kornia_tensor::CpuAllocator;
@@ -38,7 +38,7 @@ use crate::cuda::allocator::CudaAllocator;
 #[cfg(feature = "cuda")]
 use crate::cuda::image::{CudaImage, CudaImageExt};
 
-// AnyGpuImage — backend-erased image handle
+// AnyGpuImage - backend-erased image handle
 
 pub enum AnyGpuImage<const C: usize> {
     Wgpu(GpuImage<f32, C>),
@@ -62,7 +62,10 @@ impl<const C: usize> AnyGpuImage<C> {
         }
     }
     pub fn size(&self) -> ImageSize {
-        ImageSize { width: self.width(), height: self.height() }
+        ImageSize {
+            width: self.width(),
+            height: self.height(),
+        }
     }
 }
 
@@ -89,7 +92,10 @@ impl Backend {
                     return Ok(Backend::Cuda(alloc));
                 }
                 Err(e) => {
-                    eprintln!("[kornia-gpu] backend: wgpu/Vulkan (CUDA unavailable: {})", e);
+                    eprintln!(
+                        "[kornia-gpu] backend: wgpu/Vulkan (CUDA unavailable: {})",
+                        e
+                    );
                 }
             }
         }
@@ -155,12 +161,12 @@ impl Backend {
         m: &[f32; 9],
     ) -> Result<AnyGpuImage<C>, GpuError> {
         match src {
-            AnyGpuImage::Wgpu(img) => Ok(AnyGpuImage::Wgpu(
-                crate::kernels::warp_perspective(img, dst_size, m)?
-            )),
+            AnyGpuImage::Wgpu(img) => Ok(AnyGpuImage::Wgpu(crate::kernels::warp_perspective(
+                img, dst_size, m,
+            )?)),
             #[cfg(feature = "cuda")]
             AnyGpuImage::Cuda(img) => Ok(AnyGpuImage::Cuda(
-                crate::cuda::kernels::warp_perspective(img, dst_size, m)?
+                crate::cuda::kernels::warp_perspective(img, dst_size, m)?,
             )),
         }
     }
@@ -171,28 +177,23 @@ impl Backend {
         scale: f32,
     ) -> Result<AnyGpuImage<C>, GpuError> {
         match src {
-            AnyGpuImage::Wgpu(img) => Ok(AnyGpuImage::Wgpu(
-                crate::kernels::cast_and_scale(img, scale)?
-            )),
+            AnyGpuImage::Wgpu(img) => Ok(AnyGpuImage::Wgpu(crate::kernels::cast_and_scale(
+                img, scale,
+            )?)),
             #[cfg(feature = "cuda")]
-            AnyGpuImage::Cuda(img) => Ok(AnyGpuImage::Cuda(
-                crate::cuda::kernels::cast_and_scale(img, scale)?
-            )),
+            AnyGpuImage::Cuda(img) => Ok(AnyGpuImage::Cuda(crate::cuda::kernels::cast_and_scale(
+                img, scale,
+            )?)),
         }
     }
 
-    pub fn gray_from_rgb(
-        &self,
-        src: &AnyGpuImage<3>,
-    ) -> Result<AnyGpuImage<1>, GpuError> {
+    pub fn gray_from_rgb(&self, src: &AnyGpuImage<3>) -> Result<AnyGpuImage<1>, GpuError> {
         match src {
-            AnyGpuImage::Wgpu(img) => Ok(AnyGpuImage::Wgpu(
-                crate::kernels::gray_from_rgb(img)?
-            )),
+            AnyGpuImage::Wgpu(img) => Ok(AnyGpuImage::Wgpu(crate::kernels::gray_from_rgb(img)?)),
             #[cfg(feature = "cuda")]
-            AnyGpuImage::Cuda(img) => Ok(AnyGpuImage::Cuda(
-                crate::cuda::kernels::gray_from_rgb(img)?
-            )),
+            AnyGpuImage::Cuda(img) => {
+                Ok(AnyGpuImage::Cuda(crate::cuda::kernels::gray_from_rgb(img)?))
+            }
         }
     }
 }

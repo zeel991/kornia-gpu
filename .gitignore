@@ -1,0 +1,8 @@
+/target/
+Cargo.lock
+*.ptx
+*.fatbin
+*.DS_Store
+*.swp
+*.swo
+benchmark_results.txt

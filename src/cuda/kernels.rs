@@ -22,28 +22,43 @@ static GRAY_PTX: &str = "";
 fn tile_config(w: usize, h: usize) -> LaunchConfig {
     let tile = 16u32;
     LaunchConfig {
-        grid_dim:  ((w as u32 + tile - 1) / tile, (h as u32 + tile - 1) / tile, 1),
+        grid_dim: ((w as u32).div_ceil(tile), (h as u32).div_ceil(tile), 1),
         block_dim: (tile, tile, 1),
         shared_mem_bytes: 0,
     }
 }
 
 fn invert(m: &[f32; 9]) -> Result<[f32; 9], GpuError> {
-    let det = m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]);
-    if det.abs() < 1e-10 { return Err(GpuError::SingularHomography); }
+    let det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6])
+        + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    if det.abs() < 1e-10 {
+        return Err(GpuError::SingularHomography);
+    }
     let d = 1.0 / det;
     Ok([
-        (m[4]*m[8]-m[5]*m[7])*d, (m[2]*m[7]-m[1]*m[8])*d, (m[1]*m[5]-m[2]*m[4])*d,
-        (m[5]*m[6]-m[3]*m[8])*d, (m[0]*m[8]-m[2]*m[6])*d, (m[2]*m[3]-m[0]*m[5])*d,
-        (m[3]*m[7]-m[4]*m[6])*d, (m[1]*m[6]-m[0]*m[7])*d, (m[0]*m[4]-m[1]*m[3])*d,
+        (m[4] * m[8] - m[5] * m[7]) * d,
+        (m[2] * m[7] - m[1] * m[8]) * d,
+        (m[1] * m[5] - m[2] * m[4]) * d,
+        (m[5] * m[6] - m[3] * m[8]) * d,
+        (m[0] * m[8] - m[2] * m[6]) * d,
+        (m[2] * m[3] - m[0] * m[5]) * d,
+        (m[3] * m[7] - m[4] * m[6]) * d,
+        (m[1] * m[6] - m[0] * m[7]) * d,
+        (m[0] * m[4] - m[1] * m[3]) * d,
     ])
 }
 
-pub fn cast_and_scale<const C: usize>(src: &CudaImage<C>, scale: f32) -> Result<CudaImage<C>, GpuError> {
+pub fn cast_and_scale<const C: usize>(
+    src: &CudaImage<C>,
+    scale: f32,
+) -> Result<CudaImage<C>, GpuError> {
     let alloc = src.alloc();
-    let module = alloc.ctx.load_module(CAST_PTX.into())
+    let module = alloc
+        .ctx
+        .load_module(CAST_PTX.into())
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
-    let f = module.load_function("cast_and_scale")
+    let f = module
+        .load_function("cast_and_scale")
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
 
     let dst = CudaImage::<C>::empty(src.height(), src.width(), alloc)?;
@@ -65,18 +80,25 @@ pub fn cast_and_scale<const C: usize>(src: &CudaImage<C>, scale: f32) -> Result<
 }
 
 pub fn warp_perspective<const C: usize>(
-    src: &CudaImage<C>, dst_size: (usize, usize), m: &[f32; 9],
+    src: &CudaImage<C>,
+    dst_size: (usize, usize),
+    m: &[f32; 9],
 ) -> Result<CudaImage<C>, GpuError> {
     let (dst_h, dst_w) = dst_size;
     let alloc = src.alloc();
     let h_inv = invert(m)?;
 
-    let module = alloc.ctx.load_module(WARP_PTX.into())
+    let module = alloc
+        .ctx
+        .load_module(WARP_PTX.into())
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
-    let f = module.load_function("warp_perspective")
+    let f = module
+        .load_function("warp_perspective")
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
 
-    let h_inv_dev = alloc.stream.clone_htod(&h_inv)
+    let h_inv_dev = alloc
+        .stream
+        .clone_htod(&h_inv)
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
     let dst = CudaImage::<C>::empty(dst_h, dst_w, alloc)?;
     let cfg = tile_config(dst_w, dst_h);
@@ -102,9 +124,12 @@ pub fn warp_perspective<const C: usize>(
 
 pub fn gray_from_rgb(src: &CudaImage<3>) -> Result<CudaImage<1>, GpuError> {
     let alloc = src.alloc();
-    let module = alloc.ctx.load_module(GRAY_PTX.into())
+    let module = alloc
+        .ctx
+        .load_module(GRAY_PTX.into())
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
-    let f = module.load_function("gray_from_rgb")
+    let f = module
+        .load_function("gray_from_rgb")
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
 
     let dst = CudaImage::<1>::empty(src.height(), src.width(), alloc)?;

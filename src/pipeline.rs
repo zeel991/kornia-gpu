@@ -29,21 +29,27 @@ impl<'a> GpuPipeline<'a> {
         img: &Image<T, C, CpuAllocator>,
     ) -> Result<Stage<'a, T, C>, GpuError> {
         let gpu_img = img.to_gpu(self.alloc)?;
-        Ok(Stage { image: gpu_img, alloc: self.alloc })
+        Ok(Stage {
+            image: gpu_img,
+            alloc: self.alloc,
+        })
     }
 }
 
-/// An in-flight GPU image. Each method returns the next stage — data stays in VRAM.
+/// An in-flight GPU image. Each method returns the next stage - data stays in VRAM.
 pub struct Stage<'a, T: bytemuck::Pod, const C: usize> {
     pub image: GpuImage<T, C>,
     alloc: &'a GpuAllocator,
 }
 
 impl<'a> Stage<'a, f32, 3> {
-    /// Multiply every pixel by `scale`. Stays in VRAM.
+    /// Multiply every pixel by scale. Stays in VRAM.
     pub fn cast_and_scale(self, scale: f32) -> Result<Stage<'a, f32, 3>, GpuError> {
         let out = kernels::cast_and_scale(&self.image, scale)?;
-        Ok(Stage { image: out, alloc: self.alloc })
+        Ok(Stage {
+            image: out,
+            alloc: self.alloc,
+        })
     }
 
     /// Apply perspective warp. Stays in VRAM.
@@ -53,13 +59,19 @@ impl<'a> Stage<'a, f32, 3> {
         m: &[f32; 9],
     ) -> Result<Stage<'a, f32, 3>, GpuError> {
         let out = kernels::warp_perspective(&self.image, dst_size, m)?;
-        Ok(Stage { image: out, alloc: self.alloc })
+        Ok(Stage {
+            image: out,
+            alloc: self.alloc,
+        })
     }
 
     /// Convert RGB → grayscale. Stays in VRAM.
     pub fn gray_from_rgb(self) -> Result<Stage<'a, f32, 1>, GpuError> {
         let out = kernels::gray_from_rgb(&self.image)?;
-        Ok(Stage { image: out, alloc: self.alloc })
+        Ok(Stage {
+            image: out,
+            alloc: self.alloc,
+        })
     }
 
     /// Download to CPU, ending the pipeline.

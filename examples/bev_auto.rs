@@ -11,11 +11,7 @@ use kornia_gpu::Backend;
 use kornia_image::Image;
 use kornia_tensor::CpuAllocator;
 
-const BEV_HOMOGRAPHY: [f32; 9] = [
-     1.2,    0.05, -120.0,
-    -0.03,   1.15,  -90.0,
-     0.0001, 0.0002,  1.0,
-];
+const BEV_HOMOGRAPHY: [f32; 9] = [1.2, 0.05, -120.0, -0.03, 1.15, -90.0, 0.0001, 0.0002, 1.0];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -45,7 +41,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let raw: &[u8] = bytemuck::cast_slice(result.as_slice());
     std::fs::write("output_auto.bin", raw)?;
     println!("Output saved: output_auto.bin");
-    println!("Compare: python3 crates/kornia-gpu/tools/opencv_compare.py {} output_auto.bin {} {}", input_path, w, h);
+    println!(
+        "Compare: python3 crates/kornia-gpu/tools/opencv_compare.py {} output_auto.bin {} {}",
+        input_path, w, h
+    );
 
     Ok(())
 }

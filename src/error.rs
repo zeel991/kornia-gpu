@@ -26,7 +26,7 @@ pub enum GpuError {
     CudaError(String),
 
     /// All buffers in the pool are currently acquired.
-    #[error("GPU image pool exhausted — all buffers in use")]
+    #[error("GPU image pool exhausted - all buffers in use")]
     PoolExhausted,
 
     /// Buffer dimensions don't match the operation's required output size.

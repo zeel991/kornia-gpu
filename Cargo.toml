@@ -1,21 +1,26 @@
+[workspace]
+members = ["bubbaloop-node"]
+resolver = "2"
+
 [package]
 name = "kornia-gpu"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
-description = "GPU-accelerated image processing for kornia-rs — wgpu + CUDA backends with hardware-aware auto-dispatch"
+description = "GPU-accelerated image processing for kornia-rs - wgpu + CUDA backends with hardware-aware auto-dispatch"
 repository = "https://github.com/0xZeeast/kornia-gpu"
 license = "MIT OR Apache-2.0"
 build = "build.rs"
 
 [dependencies]
-kornia-tensor = "0.1.11"
-kornia-image  = "0.1.11"
-cubecl        = { version = "0.9", features = ["wgpu"] }
-bytemuck      = "1"
+kornia-tensor = "0.1.10"
+kornia-image  = "0.1.10"
+wgpu          = "22"
+pollster      = "0.3"
+bytemuck      = { version = "1", features = ["derive"] }
 thiserror     = "2"
 
-# CUDA backend — optional, requires nvidia-cuda-toolkit at build time
+# CUDA backend - optional, requires nvidia-cuda-toolkit at build time
 cudarc = { version = "0.19", features = ["cuda-12000", "dynamic-loading"], optional = true }
 
 [features]
@@ -23,17 +28,13 @@ default = []
 cuda = ["dep:cudarc"]
 
 [dev-dependencies]
-criterion    = "0.8"
-kornia-imgproc = "0.1.11"
-kornia-io      = "0.1.11"
+criterion      = { version = "0.5", features = ["html_reports"] }
+kornia-imgproc = "0.1.10"
+kornia-io      = "0.1.10"
 
 [[bench]]
 name = "bench_gpu"
 harness = false
-
-[[example]]
-name = "bev_compare"
-path = "examples/bev_compare.rs"
 
 [[example]]
 name = "bev_node"
